@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0b0f17" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>محاسبه بهای تمام‌شده و مارجین</title>
+
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+  <style>
+    :root{
+      --bg:#0b0f17; --card:#121a26; --muted:#a9b4c0; --text:#e9eef5;
+      --accent:#5dd6c9; --warn:#ffd166; --danger:#ff6b6b; --line:#223044;
+      --input:#0f1622;
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Arabic", Arial;
+      background: radial-gradient(1200px 600px at 80% -10%, rgba(93,214,201,.25), transparent 60%),
+                  radial-gradient(900px 500px at 10% 0%, rgba(255,209,102,.18), transparent 60%),
+                  var(--bg);
+      color:var(--text);
+      padding:18px;
+    }
+    .wrap{max-width:1100px; margin:0 auto; display:grid; gap:14px;}
+    .top{
+      display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    }
+    h1{margin:0; font-size:18px; letter-spacing:.2px}
+    .hint{color:var(--muted); font-size:12px; margin-top:6px; line-height:1.7}
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+      border:1px solid rgba(255,255,255,.06);
+      box-shadow: 0 12px 30px rgba(0,0,0,.25);
+      border-radius: var(--radius);
+      padding:14px;
+      overflow:hidden;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap:10px;
+    }
+    @media (max-width:900px){ .grid{grid-template-columns: 1fr 1fr;} }
+    @media (max-width:520px){ .grid{grid-template-columns: 1fr;} }
+
+    label{display:block; font-size:12px; color:var(--muted); margin:0 0 6px}
+    input, select{
+      width:100%;
+      background:var(--input);
+      border:1px solid rgba(255,255,255,.08);
+      color:var(--text);
+      padding:10px 10px;
+      border-radius:12px;
+      outline:none;
+    }
+    input:focus, select:focus{border-color: rgba(93,214,201,.55); box-shadow:0 0 0 3px rgba(93,214,201,.12)}
+    .actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+    button{
+      border:0; border-radius:12px; padding:10px 12px;
+      background:rgba(93,214,201,.18);
+      color:var(--text); cursor:pointer;
+      border:1px solid rgba(93,214,201,.25);
+      font-weight:600;
+    }
+    button.secondary{background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.10)}
+    button.danger{background:rgba(255,107,107,.16); border-color:rgba(255,107,107,.22)}
+    button:active{transform:translateY(1px)}
+    .table-wrap{overflow:auto; border-radius: var(--radius); border:1px solid rgba(255,255,255,.06)}
+    table{width:100%; border-collapse:collapse; min-width:980px; background:rgba(10,14,22,.35)}
+    thead th{
+      position:sticky; top:0;
+      background:rgba(18,26,38,.96);
+      border-bottom:1px solid rgba(255,255,255,.08);
+      font-size:12px; color:var(--muted); text-align:right;
+      padding:10px;
+      white-space:nowrap;
+    }
+    tbody td{
+      border-bottom:1px solid rgba(255,255,255,.06);
+      padding:8px 10px;
+      vertical-align:middle;
+    }
+    tbody tr:hover{background:rgba(255,255,255,.03)}
+    .num{font-variant-numeric: tabular-nums}
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 10px; border-radius:999px;
+      background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10);
+      font-size:12px; color:var(--muted)
+    }
+    .pill strong{color:var(--text)}
+    .kpi{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
+    .kpi .pill{background:rgba(93,214,201,.10); border-color:rgba(93,214,201,.18)}
+    .footer{color:var(--muted); font-size:12px; line-height:1.8}
+    .small{font-size:11px; color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1>محاسبه بهای تمام‌شده و <span class="num">Margin%</span></h1>
+        <div class="hint">
+          نرخ درهم به تومان و هزینه‌های حمل را تنظیم کن؛ ردیف‌ها را اضافه کن؛ همه چیز خودکار حساب می‌شود.
+          داده‌ها داخل همین دستگاه با <span class="num">localStorage</span> ذخیره می‌شوند (آفلاین هم کار می‌کند).
+        </div>
+      </div>
+      <div class="kpi">
+        <span class="pill">جمع فروش: <strong class="num" id="sumSell">0</strong></span>
+        <span class="pill">جمع تمام‌شده: <strong class="num" id="sumTotal">0</strong></span>
+        <span class="pill">میانگین <span class="num">Margin%</span>: <strong class="num" id="avgMargin">0%</strong></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="grid">
+        <div>
+          <label>نرخ تبدیل (درهم → تومان)</label>
+          <input id="rate" type="number" inputmode="decimal" placeholder="مثلاً 17000" />
+        </div>
+        <div>
+          <label>حمل (ایرپاد) - تومان</label>
+          <input id="ship_airpod" type="number" inputmode="decimal" placeholder="مثلاً 350000" />
+        </div>
+        <div>
+          <label>حمل (تبلت) - تومان</label>
+          <input id="ship_tablet" type="number" inputmode="decimal" placeholder="مثلاً 900000" />
+        </div>
+        <div>
+          <label>حمل (واچ) - تومان</label>
+          <input id="ship_watch" type="number" inputmode="decimal" placeholder="مثلاً 450000" />
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="addRow">+ افزودن ردیف</button>
+        <button class="secondary" id="save">ذخیره</button>
+        <button class="secondary" id="exportCsv">خروجی CSV</button>
+        <button class="danger" id="clearAll">پاک کردن همه</button>
+        <span class="small">برای نصب روی آیفون → Safari → Share → Add to Home Screen</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ردیف</th>
+              <th>نام کالا</th>
+              <th>قیمت (درهم)</th>
+              <th>دسته</th>
+              <th>قیمت (تومان)</th>
+              <th>حمل (تومان)</th>
+              <th>تمام‌شده (تومان)</th>
+              <th>قیمت فروش/بازار (تومان)</th>
+              <th><span class="num">Margin%</span></th>
+              <th>حذف</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="footer">
+      فرمول‌ها: قیمت(تومان)=درهم×نرخ | تمام‌شده=قیمت+حمل | <span class="num">Margin% = (Sell-Total)/Sell</span><br/>
+      اگر خواستی <span class="num">Markup%</span> هم اضافه کنیم: <span class="num">(Sell-Total)/Total</span>
+    </div>
+  </div>
+
+<script>
+(function(){
+  // ثبت Service Worker برای آفلاین + حس اپ
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
+    });
+  }
+
+  const fmt = new Intl.NumberFormat('fa-IR');
+  const fmt2 = new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 });
+  const els = {
+    rate: document.getElementById('rate'),
+    ship_airpod: document.getElementById('ship_airpod'),
+    ship_tablet: document.getElementById('ship_tablet'),
+    ship_watch: document.getElementById('ship_watch'),
+    tbody: document.getElementById('tbody'),
+    sumSell: document.getElementById('sumSell'),
+    sumTotal: document.getElementById('sumTotal'),
+    avgMargin: document.getElementById('avgMargin'),
+    addRow: document.getElementById('addRow'),
+    save: document.getElementById('save'),
+    exportCsv: document.getElementById('exportCsv'),
+    clearAll: document.getElementById('clearAll')
+  };
+
+  const CATS = [
+    {key:'airpod', label:'ایرپاد'},
+    {key:'tablet', label:'تبلت'},
+    {key:'watch',  label:'واچ'},
+  ];
+
+  function n(v){ const x = Number(v); return Number.isFinite(x) ? x : 0; }
+
+  function currency(x){ return fmt.format(Math.round(x)); }
+
+  function load(){
+    try{
+      const raw = localStorage.getItem('costing_app_v1');
+      if(!raw) return null;
+      return JSON.parse(raw);
+    }catch(e){ return null; }
+  }
+
+  function save(){
+    const data = getState();
+    localStorage.setItem('costing_app_v1', JSON.stringify(data));
+  }
+
+  function getState(){
+    const rows = [...els.tbody.querySelectorAll('tr')].map(tr => ({
+      name: tr.querySelector('[data-k="name"]').value || '',
+      aed: n(tr.querySelector('[data-k="aed"]').value),
+      cat: tr.querySelector('[data-k="cat"]').value,
+      sell: n(tr.querySelector('[data-k="sell"]').value)
+    }));
+    return {
+      settings: {
+        rate: n(els.rate.value),
+        ship_airpod: n(els.ship_airpod.value),
+        ship_tablet: n(els.ship_tablet.value),
+        ship_watch: n(els.ship_watch.value),
+      },
+      rows
+    };
+  }
+
+  function shippingCost(catKey){
+    const s = getState().settings;
+    if(catKey === 'airpod') return s.ship_airpod;
+    if(catKey === 'tablet') return s.ship_tablet;
+    if(catKey === 'watch')  return s.ship_watch;
+    return 0;
+  }
+
+  function computeRow(row){
+    const rate = n(els.rate.value);
+    const aed = n(row.aed);
+    const toman = aed * rate;
+    const ship = shippingCost(row.cat);
+    const total = toman + ship;
+    const sell = n(row.sell);
+    const margin = sell > 0 ? (sell - total) / sell : null;
+    return { toman, ship, total, sell, margin };
+  }
+
+  function updateAll(){
+    let sumSell = 0;
+    let sumTotal = 0;
+    let margins = [];
+
+    [...els.tbody.querySelectorAll('tr')].forEach((tr, idx) => {
+      tr.querySelector('[data-k="idx"]').textContent = (idx+1).toString();
+
+      const row = {
+        aed: tr.querySelector('[data-k="aed"]').value,
+        cat: tr.querySelector('[data-k="cat"]').value,
+        sell: tr.querySelector('[data-k="sell"]').value
+      };
+
+      const r = computeRow(row);
+      tr.querySelector('[data-k="toman"]').textContent = currency(r.toman);
+      tr.querySelector('[data-k="ship"]').textContent  = currency(r.ship);
+      tr.querySelector('[data-k="total"]').textContent = currency(r.total);
+
+      const mEl = tr.querySelector('[data-k="margin"]');
+      if(r.margin === null){
+        mEl.textContent = '—';
+      } else {
+        const p = r.margin * 100;
+        mEl.textContent = fmt2.format(p) + '%';
+        margins.push(r.margin);
+      }
+
+      sumSell += r.sell;
+      sumTotal += r.total;
+    });
+
+    els.sumSell.textContent = currency(sumSell);
+    els.sumTotal.textContent = currency(sumTotal);
+
+    const avg = margins.length ? (margins.reduce((a,b)=>a+b,0)/margins.length)*100 : 0;
+    els.avgMargin.textContent = fmt2.format(avg) + '%';
+  }
+
+  function makeRow(data = {name:'', aed:0, cat:'airpod', sell:0}){
+    const tr = document.createElement('tr');
+
+    tr.innerHTML = `
+      <td class="num" data-k="idx"></td>
+      <td><input data-k="name" type="text" placeholder="مثلاً iPad 10" value="${escapeHtml(data.name||'')}" /></td>
+      <td><input data-k="aed" type="number" inputmode="decimal" placeholder="مثلاً 1200" value="${data.aed ?? 0}" /></td>
+      <td>
+        <select data-k="cat">
+          ${CATS.map(c => `<option value="${c.key}">${c.label}</option>`).join('')}
+        </select>
+      </td>
+      <td class="num"><span data-k="toman">0</span></td>
+      <td class="num"><span data-k="ship">0</span></td>
+      <td class="num"><span data-k="total">0</span></td>
+      <td><input data-k="sell" type="number" inputmode="decimal" placeholder="مثلاً 25000000" value="${data.sell ?? 0}" /></td>
+      <td class="num"><span data-k="margin">—</span></td>
+      <td><button class="danger" data-k="del">حذف</button></td>
+    `;
+
+    tr.querySelector('[data-k="cat"]').value = data.cat || 'airpod';
+
+    tr.addEventListener('input', updateAll);
+    tr.addEventListener('change', updateAll);
+    tr.querySelector('[data-k="del"]').addEventListener('click', (e) => {
+      e.preventDefault();
+      tr.remove();
+      updateAll();
+    });
+
+    return tr;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, m => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[m]));
+  }
+
+  function exportCSV(){
+    const st = getState();
+    const headers = [
+      'Row','Name','AED','Category','Rate','Toman','Shipping','Total','Sell','MarginPercent'
+    ];
+    const lines = [headers.join(',')];
+
+    st.rows.forEach((r, i) => {
+      const comp = computeRow(r);
+      const marginP = comp.margin === null ? '' : (comp.margin*100);
+      lines.push([
+        i+1,
+        csvSafe(r.name),
+        r.aed,
+        r.cat,
+        st.settings.rate,
+        Math.round(comp.toman),
+        Math.round(comp.ship),
+        Math.round(comp.total),
+        Math.round(comp.sell),
+        marginP
+      ].join(','));
+    });
+
+    const csv = "\uFEFF" + lines.join("\n"); // BOM for Persian Excel compatibility
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'costing.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function csvSafe(s){
+    const t = String(s ?? '');
+    if(/[,"\n]/.test(t)) return '"' + t.replace(/"/g,'""') + '"';
+    return t;
+  }
+
+  function init(){
+    const saved = load();
+    if(saved){
+      els.rate.value = saved.settings?.rate ?? '';
+      els.ship_airpod.value = saved.settings?.ship_airpod ?? '';
+      els.ship_tablet.value = saved.settings?.ship_tablet ?? '';
+      els.ship_watch.value = saved.settings?.ship_watch ?? '';
+
+      (saved.rows || []).forEach(r => els.tbody.appendChild(makeRow(r)));
+    }
+    if(!els.tbody.children.length){
+      els.tbody.appendChild(makeRow({name:'ایرپاد', aed: 500, cat:'airpod', sell: 12000000}));
+      els.tbody.appendChild(makeRow({name:'تبلت', aed: 1200, cat:'tablet', sell: 28000000}));
+      els.tbody.appendChild(makeRow({name:'واچ', aed: 900, cat:'watch', sell: 22000000}));
+    }
+
+    ['input','change'].forEach(ev=>{
+      els.rate.addEventListener(ev, updateAll);
+      els.ship_airpod.addEventListener(ev, updateAll);
+      els.ship_tablet.addEventListener(ev, updateAll);
+      els.ship_watch.addEventListener(ev, updateAll);
+    });
+
+    els.addRow.addEventListener('click', () => {
+      els.tbody.appendChild(makeRow());
+      updateAll();
+    });
+
+    els.save.addEventListener('click', () => {
+      save();
+      els.save.textContent = 'ذخیره شد ✓';
+      setTimeout(()=> els.save.textContent='ذخیره', 900);
+    });
+
+    els.exportCsv.addEventListener('click', exportCSV);
+
+    els.clearAll.addEventListener('click', () => {
+      localStorage.removeItem('costing_app_v1');
+      els.tbody.innerHTML = '';
+      els.rate.value = '';
+      els.ship_airpod.value = '';
+      els.ship_tablet.value = '';
+      els.ship_watch.value = '';
+      els.tbody.appendChild(makeRow());
+      updateAll();
+    });
+
+    updateAll();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
